@@ -8,6 +8,7 @@ import (
 	"io"
 	"log"
 	"net/http"
+	"net/url"
 	"os"
 	"os/signal"
 	"strconv"
@@ -26,10 +27,11 @@ type Response struct {
 
 // Config struct for holding environment variables.
 type Config struct {
-	HTTPPort int  `default:"8092"`
+	HTTPPort int  `default:"8080"`
 	Debug    bool `default:"false"`
 }
 
+// main function
 func main() {
 
 	var env Config
@@ -106,15 +108,20 @@ func Health() func(w http.ResponseWriter, r *http.Request) {
 func Authorize(wahooClientId, wahooRedirectUri string) func(w http.ResponseWriter, r *http.Request) {
 	return func(w http.ResponseWriter, r *http.Request) {
 		//Redirect to Wahoo API
-		uri := fmt.Sprintf("https://api.wahooligan.com/oauth/authorize?"+
-			"client_id=%s"+
-			"&redirect_uri=%s"+
-			"&scope=user_read workouts_read offline_data"+
-			"&response_type=code",
-			wahooClientId, wahooRedirectUri)
-
-		http.Redirect(w, r, uri, 301)
+		redirectUrl, err := getWahooAuthorizeUrl(wahooClientId, wahooRedirectUri)
+		if err != nil {
+			panic(err)
+		}
+		http.Redirect(w, r, redirectUrl.String(), 301)
 	}
+}
+
+func getWahooAuthorizeUrl(wahooClientId, wahooRedirectUri string) (*url.URL, error) {
+	return url.Parse("https://api.wahooligan.com/oauth/authorize?" +
+		"client_id=" + wahooClientId +
+		"&redirect_uri=" + wahooRedirectUri +
+		"&scope=user_read%20workouts_read%20offline_data" +
+		"&response_type=code")
 }
 
 func HomeRoot(wahooClientId, wahooClientSecret, wahooRedirectUri string) func(w http.ResponseWriter, r *http.Request) {
@@ -122,17 +129,17 @@ func HomeRoot(wahooClientId, wahooClientSecret, wahooRedirectUri string) func(w 
 		enc := json.NewEncoder(w)
 		enc.SetEscapeHTML(false)
 
+		log.Println("HomeRoot called")
+
 		code := r.URL.Query().Get("code")
 
-		accessTokenUrl := fmt.Sprintf("https://api.wahooligan.com/oauth/token?"+
-			"client_id=%s"+
-			"&client_secret=%s"+
-			"&code=%s"+
-			"&grant_type=authorization_code"+
-			"&redirect_uri=%s",
-			wahooClientId, wahooClientSecret, code, wahooRedirectUri)
+		oauthUrl, err := getWahooOAuthExchangeURL(wahooClientId, wahooClientSecret, code, wahooRedirectUri)
+		if err != nil {
+			log.Printf("Error getting the OAuth exchange URL: %v", err)
+			panic(err)
+		}
 
-		resp, err := http.Post(accessTokenUrl, "application/x-www-form-urlencoded", nil)
+		resp, err := http.Post(oauthUrl.String(), "application/json", nil) // "application/x-www-form-urlencoded
 		if err != nil {
 			log.Printf("Error making the POST request: %v", err)
 			return
@@ -163,6 +170,15 @@ func HomeRoot(wahooClientId, wahooClientSecret, wahooRedirectUri string) func(w 
 			}
 		}
 	}
+}
+
+func getWahooOAuthExchangeURL(wahooClientId, wahooClientSecret, code, wahooRedirectUri string) (*url.URL, error) {
+	return url.Parse("https://api.wahooligan.com/oauth/token?" +
+		"client_id=" + wahooClientId +
+		"&client_secret=%s" + wahooClientSecret +
+		"&code=%s" + code +
+		"&grant_type=authorization_code" +
+		"&redirect_uri=" + wahooRedirectUri)
 }
 
 func Callback() func(w http.ResponseWriter, r *http.Request) {

@@ -1,4 +1,4 @@
-# fly.toml app configuration file generated for go-wahoo-cloud-api on 2023-07-23T23:23:11+01:00
+# fly.toml app configuration file generated for go-wahoo-cloud-api on 2023-07-24T20:11:59+01:00
 #
 # See https://fly.io/docs/reference/configuration/ for information about how to use this file.
 #
@@ -13,8 +13,9 @@ primary_region = "lhr"
 [env]
   PORT = "8080"
 
+
 [http_service]
-  internal_port = 8092
+  internal_port = 8080
   force_https = true
   auto_stop_machines = true
   auto_start_machines = true

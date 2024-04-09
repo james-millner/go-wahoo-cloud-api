@@ -3,6 +3,7 @@ package main
 import (
 	"context"
 	"encoding/json"
+	"errors"
 	"fmt"
 	goji "goji.io"
 	"io"
@@ -22,7 +23,6 @@ import (
 // Response Struct
 type Response struct {
 	Message string `json:"message"`
-	Request string `json:"request"`
 }
 
 // Config struct for holding environment variables.
@@ -74,7 +74,7 @@ func main() {
 		}
 	}()
 
-	if err := srv.ListenAndServe(); err != http.ErrServerClosed {
+	if err := srv.ListenAndServe(); !errors.Is(err, http.ErrServerClosed) {
 		log.Printf("%v", err)
 	} else {
 		log.Printf("HTTP Server shutdown!")
@@ -87,7 +87,7 @@ func handlersMethod(wahooClientId, wahooClientSecret, wahooRedirectUri string) *
 	router.HandleFunc(pat.Get("/healthz"), Health())
 	router.HandleFunc(pat.Get("/authorize"), Authorize(wahooClientId, wahooRedirectUri))
 	router.HandleFunc(pat.Get("/"), HomeRoot(wahooClientId, wahooClientSecret, wahooRedirectUri))
-	router.HandleFunc(pat.Get("/callback"), Callback())
+	router.HandleFunc(pat.Post("/callback"), Callback())
 	return router
 }
 
@@ -106,9 +106,14 @@ func Health() func(w http.ResponseWriter, r *http.Request) {
 }
 
 func Authorize(wahooClientId, wahooRedirectUri string) func(w http.ResponseWriter, r *http.Request) {
+
+	log.Println("Authorize called")
+	//Redirect to Wahoo API
+	redirectUrl, err := getWahooAuthorizeUrl(wahooClientId, wahooRedirectUri)
+	log.Println(redirectUrl.String())
+
 	return func(w http.ResponseWriter, r *http.Request) {
-		//Redirect to Wahoo API
-		redirectUrl, err := getWahooAuthorizeUrl(wahooClientId, wahooRedirectUri)
+
 		if err != nil {
 			panic(err)
 		}
@@ -133,7 +138,20 @@ func HomeRoot(wahooClientId, wahooClientSecret, wahooRedirectUri string) func(w 
 
 		code := r.URL.Query().Get("code")
 
+		if code == "" {
+			log.Printf("No code found in the URL")
+			http.Redirect(w, r, "https://api.wahooligan.com/oauth/authorize?"+
+				"client_id="+wahooClientId+
+				"&redirect_uri="+wahooRedirectUri+
+				"&scope=user_read%20workouts_read%20offline_data"+
+				"&response_type=code", 301)
+		}
+
 		oauthUrl, err := getWahooOAuthExchangeURL(wahooClientId, wahooClientSecret, code, wahooRedirectUri)
+
+		log.Printf("OAuth URL: %s", oauthUrl.String())
+		log.Printf("code: %s", code)
+
 		if err != nil {
 			log.Printf("Error getting the OAuth exchange URL: %v", err)
 			panic(err)
@@ -152,6 +170,8 @@ func HomeRoot(wahooClientId, wahooClientSecret, wahooRedirectUri string) func(w 
 			return
 		}
 
+		log.Println(string(body))
+
 		if resp.StatusCode == http.StatusOK {
 			log.Printf("Authorization code received: %s", string(body))
 			// Respond with the authorization code if needed.
@@ -160,7 +180,15 @@ func HomeRoot(wahooClientId, wahooClientSecret, wahooRedirectUri string) func(w 
 				log.Fatal(fprintf)
 				return
 			}
+
+			resp := &Response{
+				Message: "OK",
+			}
+
+			enc.Encode(resp)
+
 		} else {
+			log.Printf("Response status code: %d", resp.StatusCode)
 			log.Printf("Error response: %s", string(body))
 			// Respond with an error message if needed.
 			fprintf, err := fmt.Fprintf(w, string(body))
@@ -168,6 +196,12 @@ func HomeRoot(wahooClientId, wahooClientSecret, wahooRedirectUri string) func(w 
 				log.Fatal(fprintf)
 				return
 			}
+
+			resp := &Response{
+				Message: "Error Response Whoops",
+			}
+
+			enc.Encode(resp)
 		}
 	}
 }
@@ -175,13 +209,16 @@ func HomeRoot(wahooClientId, wahooClientSecret, wahooRedirectUri string) func(w 
 func getWahooOAuthExchangeURL(wahooClientId, wahooClientSecret, code, wahooRedirectUri string) (*url.URL, error) {
 	return url.Parse("https://api.wahooligan.com/oauth/token?" +
 		"client_id=" + wahooClientId +
-		"&client_secret=%s" + wahooClientSecret +
-		"&code=%s" + code +
+		"&client_secret=" + wahooClientSecret +
+		"&code=" + code +
 		"&grant_type=authorization_code" +
 		"&redirect_uri=" + wahooRedirectUri)
 }
 
 func Callback() func(w http.ResponseWriter, r *http.Request) {
+
+	log.Println("Callback called")
+
 	return func(w http.ResponseWriter, r *http.Request) {
 		enc := json.NewEncoder(w)
 		enc.SetEscapeHTML(false)
@@ -192,9 +229,10 @@ func Callback() func(w http.ResponseWriter, r *http.Request) {
 			return
 		}
 
+		log.Println("Request Body: ", string(body))
+
 		resp := &Response{
-			Message: "OK",
-			Request: string(body),
+			Message: string(body),
 		}
 
 		enc.Encode(resp)

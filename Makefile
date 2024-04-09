@@ -11,6 +11,6 @@ test:
 	go test ./...
 
 build:
-	go build cmd/main/main.go
+	go build -o run-app /Users/jamesmillner/Developer/go-wahoo-cloud-api/cmd/main
 
 default: build

@@ -61,7 +61,7 @@ func handlersMethod(wahooClientId, wahooClientSecret, wahooRedirectUri string) *
 	router := goji.NewMux()
 
 	router.HandleFunc(pat.Get("/healthz"), health.HealthHandler())
-	router.HandleFunc(pat.Get("/authorize"), oauth.Authorize(wahooClientId, wahooRedirectUri))
+	router.HandleFunc(pat.Get("/authorize"), oauth.Authorize())
 	router.HandleFunc(pat.Get("/"), oauth.AuthCallback(wahooClientId, wahooClientSecret, wahooRedirectUri))
 	router.HandleFunc(pat.Post("/callback"), webhook.Callback())
 	return router

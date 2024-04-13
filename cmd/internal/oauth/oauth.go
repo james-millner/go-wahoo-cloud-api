@@ -7,6 +7,7 @@ import (
 	"io"
 	"log"
 	"net/http"
+	"os"
 )
 
 // Response Struct
@@ -24,9 +25,12 @@ type WahooTokenResponse struct {
 	CreatedAt    int    `json:"created_at"`
 }
 
-func Authorize(wahooClientId, wahooRedirectUri string) func(w http.ResponseWriter, r *http.Request) {
+func Authorize() func(w http.ResponseWriter, r *http.Request) {
 
 	log.Println("Authorize called")
+	wahooClientId := os.Getenv("WAHOO_CLIENT_ID")
+	wahooRedirectUri := os.Getenv("REDIRECT_URI")
+
 	//Redirect to Wahoo API
 	redirectUrl, err := utils.GetWahooAuthorizeUrl(wahooClientId, wahooRedirectUri)
 	log.Println(redirectUrl.String())

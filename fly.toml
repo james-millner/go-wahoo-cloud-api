@@ -9,11 +9,11 @@ primary_region = 'lhr'
 [build]
 
 [env]
-  PORT = '8080'
+  PORT = "8080"
   REDIRECT_URI = "https://go-wahoo-cloud-api-frosty-cloud-6258.fly.dev/"
   WAHOO_CLIENT_ID = "***REMOVED***"
   WAHOO_AUTH_BASE_URL = "https://api.wahooligan.com/oauth/authorize"
-  WAHOO_TOKEN_URL = "https://api.wahooligan.com/oauth/token"
+  WAHOO_TOKEN_BASE_URL = "https://api.wahooligan.com/oauth/token"
 
 [http_service]
   internal_port = 8080

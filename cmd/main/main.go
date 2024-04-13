@@ -18,24 +18,13 @@ import (
 	"goji.io/pat"
 )
 
-// Response Struct
-type Response struct {
-	Message string `json:"message"`
-}
-
-// Config struct for holding environment variables.
-type Config struct {
-	HTTPPort int  `default:"8080"`
-	Debug    bool `default:"false"`
-}
-
 // main function
 func main() {
 
 	wahooClientId := os.Getenv("WAHOO_CLIENT_ID")
 	wahooClientSecret := os.Getenv("WAHOO_CLIENT_SECRET")
 	wahooRedirectURI := os.Getenv("REDIRECT_URI")
-	httpPort, _ := strconv.Atoi(os.Getenv("HTTP_PORT"))
+	httpPort, _ := strconv.Atoi(os.Getenv("PORT"))
 
 	srv := &http.Server{
 		Addr:    ":" + strconv.Itoa(httpPort),

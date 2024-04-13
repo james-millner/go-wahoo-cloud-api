@@ -3,7 +3,7 @@ package oauth
 import (
 	"encoding/json"
 	"fmt"
-	"github.com/james-millner/go-wahoo-cloud-api/cmd/internal/utils"
+	"github.com/james-millner/go-wahoo-cloud-api/cmd/pkg/utils"
 	"io"
 	"log"
 	"net/http"
@@ -45,13 +45,7 @@ func AuthCallback(wahooClientId, wahooClientSecret, wahooRedirectUri string) fun
 
 		code := r.URL.Query().Get("code")
 
-		if code == "" {
-			log.Printf("No code found in the URL")
-			http.Redirect(w, r, "https://api.wahooligan.com/oauth/authorize?"+
-				"client_id="+wahooClientId+
-				"&redirect_uri="+wahooRedirectUri+
-				"&scope=user_read%20workouts_read%20offline_data"+
-				"&response_type=code", 301)
+		if utils.CheckIfAuthCodeDoesntExist(w, r, code, wahooClientId, wahooRedirectUri) {
 			return
 		}
 

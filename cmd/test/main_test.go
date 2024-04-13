@@ -2,9 +2,8 @@ package test
 
 import (
 	"fmt"
+	"github.com/james-millner/go-wahoo-cloud-api/cmd/pkg/utils"
 	"testing"
-
-	"github.com/james-millner/go-wahoo-cloud-api/cmd/internal/utils"
 )
 
 func TestGetWahooAuthorizeURL(t *testing.T) {

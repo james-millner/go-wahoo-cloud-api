@@ -2,20 +2,19 @@ package main
 
 import (
 	"context"
-	"encoding/json"
 	"errors"
-	"fmt"
 	goji "goji.io"
-	"io"
 	"log"
 	"net/http"
-	"net/url"
 	"os"
 	"os/signal"
 	"strconv"
 	"time"
 
-	_ "github.com/go-sql-driver/mysql"
+	"github.com/james-millner/go-wahoo-cloud-api/cmd/internal/health"
+	"github.com/james-millner/go-wahoo-cloud-api/cmd/internal/oauth"
+	"github.com/james-millner/go-wahoo-cloud-api/cmd/internal/webhook"
+
 	"github.com/kelseyhightower/envconfig"
 	"goji.io/pat"
 )
@@ -84,157 +83,9 @@ func main() {
 func handlersMethod(wahooClientId, wahooClientSecret, wahooRedirectUri string) *goji.Mux {
 	router := goji.NewMux()
 
-	router.HandleFunc(pat.Get("/healthz"), Health())
-	router.HandleFunc(pat.Get("/authorize"), Authorize(wahooClientId, wahooRedirectUri))
-	router.HandleFunc(pat.Get("/"), HomeRoot(wahooClientId, wahooClientSecret, wahooRedirectUri))
-	router.HandleFunc(pat.Post("/callback"), Callback())
+	router.HandleFunc(pat.Get("/healthz"), health.HealthHandler())
+	router.HandleFunc(pat.Get("/authorize"), oauth.Authorize(wahooClientId, wahooRedirectUri))
+	router.HandleFunc(pat.Get("/"), oauth.OAuthCallback(wahooClientId, wahooClientSecret, wahooRedirectUri))
+	router.HandleFunc(pat.Post("/callback"), webhook.Callback())
 	return router
-}
-
-// Health endpoint
-func Health() func(w http.ResponseWriter, r *http.Request) {
-	return func(w http.ResponseWriter, r *http.Request) {
-		enc := json.NewEncoder(w)
-		enc.SetEscapeHTML(false)
-
-		resp := &Response{
-			Message: "OK",
-		}
-
-		enc.Encode(resp)
-	}
-}
-
-func Authorize(wahooClientId, wahooRedirectUri string) func(w http.ResponseWriter, r *http.Request) {
-
-	log.Println("Authorize called")
-	//Redirect to Wahoo API
-	redirectUrl, err := getWahooAuthorizeUrl(wahooClientId, wahooRedirectUri)
-	log.Println(redirectUrl.String())
-
-	return func(w http.ResponseWriter, r *http.Request) {
-
-		if err != nil {
-			panic(err)
-		}
-		http.Redirect(w, r, redirectUrl.String(), 301)
-	}
-}
-
-func getWahooAuthorizeUrl(wahooClientId, wahooRedirectUri string) (*url.URL, error) {
-	return url.Parse("https://api.wahooligan.com/oauth/authorize?" +
-		"client_id=" + wahooClientId +
-		"&redirect_uri=" + wahooRedirectUri +
-		"&scope=user_read%20workouts_read%20offline_data" +
-		"&response_type=code")
-}
-
-func HomeRoot(wahooClientId, wahooClientSecret, wahooRedirectUri string) func(w http.ResponseWriter, r *http.Request) {
-	return func(w http.ResponseWriter, r *http.Request) {
-		enc := json.NewEncoder(w)
-		enc.SetEscapeHTML(false)
-
-		log.Println("HomeRoot called")
-
-		code := r.URL.Query().Get("code")
-
-		if code == "" {
-			log.Printf("No code found in the URL")
-			http.Redirect(w, r, "https://api.wahooligan.com/oauth/authorize?"+
-				"client_id="+wahooClientId+
-				"&redirect_uri="+wahooRedirectUri+
-				"&scope=user_read%20workouts_read%20offline_data"+
-				"&response_type=code", 301)
-		}
-
-		oauthUrl, err := getWahooOAuthExchangeURL(wahooClientId, wahooClientSecret, code, wahooRedirectUri)
-
-		log.Printf("OAuth URL: %s", oauthUrl.String())
-		log.Printf("code: %s", code)
-
-		if err != nil {
-			log.Printf("Error getting the OAuth exchange URL: %v", err)
-			panic(err)
-		}
-
-		resp, err := http.Post(oauthUrl.String(), "application/json", nil) // "application/x-www-form-urlencoded
-		if err != nil {
-			log.Printf("Error making the POST request: %v", err)
-			return
-		}
-		defer resp.Body.Close()
-
-		body, err := io.ReadAll(resp.Body)
-		if err != nil {
-			log.Printf("Error reading response body: %v", err)
-			return
-		}
-
-		log.Println(string(body))
-
-		if resp.StatusCode == http.StatusOK {
-			log.Printf("Authorization code received: %s", string(body))
-			// Respond with the authorization code if needed.
-			fprintf, err := fmt.Fprintf(w, string(body))
-			if err != nil {
-				log.Fatal(fprintf)
-				return
-			}
-
-			resp := &Response{
-				Message: "OK",
-			}
-
-			enc.Encode(resp)
-
-		} else {
-			log.Printf("Response status code: %d", resp.StatusCode)
-			log.Printf("Error response: %s", string(body))
-			// Respond with an error message if needed.
-			fprintf, err := fmt.Fprintf(w, string(body))
-			if err != nil {
-				log.Fatal(fprintf)
-				return
-			}
-
-			resp := &Response{
-				Message: "Error Response Whoops",
-			}
-
-			enc.Encode(resp)
-		}
-	}
-}
-
-func getWahooOAuthExchangeURL(wahooClientId, wahooClientSecret, code, wahooRedirectUri string) (*url.URL, error) {
-	return url.Parse("https://api.wahooligan.com/oauth/token?" +
-		"client_id=" + wahooClientId +
-		"&client_secret=" + wahooClientSecret +
-		"&code=" + code +
-		"&grant_type=authorization_code" +
-		"&redirect_uri=" + wahooRedirectUri)
-}
-
-func Callback() func(w http.ResponseWriter, r *http.Request) {
-
-	log.Println("Callback called")
-
-	return func(w http.ResponseWriter, r *http.Request) {
-		enc := json.NewEncoder(w)
-		enc.SetEscapeHTML(false)
-
-		body, err := io.ReadAll(r.Body)
-		if err != nil {
-			log.Printf("Error reading response body: %v", err)
-			return
-		}
-
-		log.Println("Request Body: ", string(body))
-
-		resp := &Response{
-			Message: string(body),
-		}
-
-		enc.Encode(resp)
-	}
 }

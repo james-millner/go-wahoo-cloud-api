@@ -17,12 +17,8 @@ func TestWahooCallback_HappyPath(t *testing.T) {
 
 	request, _ := http.NewRequest("POST", "/webhook", strings.NewReader(str))
 
-	// We create a ResponseRecorder (which satisfies http.ResponseWriter) to record the response.
 	response := httptest.NewRecorder()
 	handler := http.HandlerFunc(webhook.Callback())
-
-	// Our handlers satisfy http.Handler, so we can call their ServeHTTP method
-	// directly and pass in our Request and ResponseRecorder.
 	handler.ServeHTTP(response, request)
 
 	if response.Code != http.StatusOK {
@@ -45,12 +41,8 @@ func TestWahooCallback_InvalidJson(t *testing.T) {
 
 	request, _ := http.NewRequest("POST", "/webhook", strings.NewReader(str))
 
-	// We create a ResponseRecorder (which satisfies http.ResponseWriter) to record the response.
 	response := httptest.NewRecorder()
 	handler := http.HandlerFunc(webhook.Callback())
-
-	// Our handlers satisfy http.Handler, so we can call their ServeHTTP method
-	// directly and pass in our Request and ResponseRecorder.
 	handler.ServeHTTP(response, request)
 
 	if response.Code != http.StatusInternalServerError {
@@ -64,12 +56,8 @@ func TestWahooCallback_InvalidWorkoutSummaryJson(t *testing.T) {
 
 	request, _ := http.NewRequest("POST", "/webhook", strings.NewReader(str))
 
-	// We create a ResponseRecorder (which satisfies http.ResponseWriter) to record the response.
 	response := httptest.NewRecorder()
 	handler := http.HandlerFunc(webhook.Callback())
-
-	// Our handlers satisfy http.Handler, so we can call their ServeHTTP method
-	// directly and pass in our Request and ResponseRecorder.
 	handler.ServeHTTP(response, request)
 
 	actualResponseBody := unMarshallResponse(response.Body.String())

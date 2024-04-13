@@ -40,10 +40,20 @@ func Authorize(wahooClientId, wahooRedirectUri string) func(w http.ResponseWrite
 	}
 }
 
-func OAuthCallback(wahooClientId, wahooClientSecret, wahooRedirectUri string) func(w http.ResponseWriter, r *http.Request) {
+func AuthCallback(wahooClientId, wahooClientSecret, wahooRedirectUri string) func(w http.ResponseWriter, r *http.Request) {
 	return func(w http.ResponseWriter, r *http.Request) {
 
-		code := checkAndInitiateOauthRedirect(w, r, wahooClientId, wahooRedirectUri)
+		code := r.URL.Query().Get("code")
+
+		if code == "" {
+			log.Printf("No code found in the URL")
+			http.Redirect(w, r, "https://api.wahooligan.com/oauth/authorize?"+
+				"client_id="+wahooClientId+
+				"&redirect_uri="+wahooRedirectUri+
+				"&scope=user_read%20workouts_read%20offline_data"+
+				"&response_type=code", 301)
+			return
+		}
 
 		oauthUrl, err := utils.GetWahooOAuthExchangeURL(wahooClientId, wahooClientSecret, code, wahooRedirectUri)
 		if err != nil {
@@ -60,13 +70,17 @@ func OAuthCallback(wahooClientId, wahooClientSecret, wahooRedirectUri string) fu
 		}
 		defer oauthResponse.Body.Close()
 
+		body, err := io.ReadAll(oauthResponse.Body)
+		if err != nil {
+			log.Printf("Error reading response body: %v", err)
+			http.Error(w, "Internal Server Error", http.StatusInternalServerError)
+			return
+		}
+
+		enc := json.NewEncoder(w)
+		enc.SetEscapeHTML(false)
+
 		if oauthResponse.StatusCode == http.StatusOK {
-			body, err := io.ReadAll(oauthResponse.Body)
-			if err != nil {
-				log.Printf("Error reading response body: %v", err)
-				http.Error(w, "Internal Server Error", http.StatusInternalServerError)
-				return
-			}
 
 			var tokenResponse WahooTokenResponse
 			jErr := json.Unmarshal(body, &tokenResponse)
@@ -76,47 +90,20 @@ func OAuthCallback(wahooClientId, wahooClientSecret, wahooRedirectUri string) fu
 				return
 			}
 
-			enc := json.NewEncoder(w)
-			enc.SetEscapeHTML(false)
-
 			enc.Encode(tokenResponse)
-		} else {
-
-			body, err := io.ReadAll(oauthResponse.Body)
-			if err != nil {
-				log.Printf("Error reading response body: %v", err)
-				http.Error(w, "Internal Server Error", http.StatusInternalServerError)
-				return
-			}
-
-			log.Printf("Response status code: %d", oauthResponse.StatusCode)
-			log.Printf("Error response: %s", string(body))
-			// Respond with an error message if needed.
-			fprintf, err := fmt.Fprintf(w, string(body))
-			if err != nil {
-				log.Fatal(fprintf)
-				return
-			}
-
-			enc := json.NewEncoder(w)
-			enc.SetEscapeHTML(false)
-
-			enc.Encode(body)
+			return
 		}
 
-	}
-}
+		log.Printf("Response status code: %d", oauthResponse.StatusCode)
+		log.Printf("Error response: %s", string(body))
+		// Respond with an error message if needed.
+		fprintf, err := fmt.Fprintf(w, string(body))
+		if err != nil {
+			log.Fatal(fprintf)
+			return
+		}
 
-func checkAndInitiateOauthRedirect(w http.ResponseWriter, r *http.Request, wahooClientId string, wahooRedirectUri string) string {
-	code := r.URL.Query().Get("code")
-
-	if code == "" {
-		log.Printf("No code found in the URL")
-		http.Redirect(w, r, "https://api.wahooligan.com/oauth/authorize?"+
-			"client_id="+wahooClientId+
-			"&redirect_uri="+wahooRedirectUri+
-			"&scope=user_read%20workouts_read%20offline_data"+
-			"&response_type=code", 301)
+		enc.Encode(body)
+		return
 	}
-	return code
 }

@@ -15,7 +15,6 @@ import (
 	"github.com/james-millner/go-wahoo-cloud-api/cmd/internal/oauth"
 	"github.com/james-millner/go-wahoo-cloud-api/cmd/internal/webhook"
 
-	"github.com/kelseyhightower/envconfig"
 	"goji.io/pat"
 )
 
@@ -33,24 +32,13 @@ type Config struct {
 // main function
 func main() {
 
-	var env Config
-	err := envconfig.Process("api", &env)
-	if err != nil {
-		log.Fatal(err.Error())
-	}
-
-	log.Println("Listening on: ", env.HTTPPort)
-
 	wahooClientId := os.Getenv("WAHOO_CLIENT_ID")
 	wahooClientSecret := os.Getenv("WAHOO_CLIENT_SECRET")
 	wahooRedirectURI := os.Getenv("REDIRECT_URI")
-
-	log.Println("Wahoo Client ID: ", wahooClientId)
-	log.Println("Wahoo Client Secret: ", wahooClientSecret)
-	log.Println("Wahoo Redirect URI: ", wahooRedirectURI)
+	httpPort, _ := strconv.Atoi(os.Getenv("HTTP_PORT"))
 
 	srv := &http.Server{
-		Addr:    ":" + strconv.Itoa(env.HTTPPort),
+		Addr:    ":" + strconv.Itoa(httpPort),
 		Handler: handlersMethod(wahooClientId, wahooClientSecret, wahooRedirectURI),
 	}
 
@@ -85,7 +73,7 @@ func handlersMethod(wahooClientId, wahooClientSecret, wahooRedirectUri string) *
 
 	router.HandleFunc(pat.Get("/healthz"), health.HealthHandler())
 	router.HandleFunc(pat.Get("/authorize"), oauth.Authorize(wahooClientId, wahooRedirectUri))
-	router.HandleFunc(pat.Get("/"), oauth.OAuthCallback(wahooClientId, wahooClientSecret, wahooRedirectUri))
+	router.HandleFunc(pat.Get("/"), oauth.AuthCallback(wahooClientId, wahooClientSecret, wahooRedirectUri))
 	router.HandleFunc(pat.Post("/callback"), webhook.Callback())
 	return router
 }

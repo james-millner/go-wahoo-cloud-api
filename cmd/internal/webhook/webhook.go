@@ -68,6 +68,7 @@ func Callback() func(w http.ResponseWriter, r *http.Request) {
 		requestBody, err := io.ReadAll(r.Body)
 		if err != nil {
 			log.Printf("Error reading response body: %v", err)
+			http.Error(w, "Internal Server Error", http.StatusInternalServerError)
 			return
 		}
 
@@ -77,10 +78,17 @@ func Callback() func(w http.ResponseWriter, r *http.Request) {
 		jErr := json.Unmarshal(requestBody, &wahooWorkout)
 		if jErr != nil {
 			fmt.Println("Error unmarshalling JSON:", jErr)
+			http.Error(w, "Internal Server Error", http.StatusInternalServerError)
 			return
 		}
 
 		// Print the decoded data
 		log.Println("Decoded data: ", wahooWorkout)
+		rEncErr := enc.Encode(wahooWorkout)
+		if rEncErr != nil {
+			fmt.Println("Error encoding JSON response:", rEncErr)
+			http.Error(w, "Internal Server Error", http.StatusInternalServerError)
+			return
+		}
 	}
 }

@@ -44,7 +44,12 @@ func Authorize() func(w http.ResponseWriter, r *http.Request) {
 	}
 }
 
-func AuthCallback(wahooClientId, wahooClientSecret, wahooRedirectUri string) func(w http.ResponseWriter, r *http.Request) {
+func AuthCallback() func(w http.ResponseWriter, r *http.Request) {
+
+	wahooClientId := os.Getenv("WAHOO_CLIENT_ID")
+	wahooClientSecret := os.Getenv("WAHOO_CLIENT_SECRET")
+	wahooRedirectUri := os.Getenv("REDIRECT_URI")
+
 	return func(w http.ResponseWriter, r *http.Request) {
 
 		code := r.URL.Query().Get("code")

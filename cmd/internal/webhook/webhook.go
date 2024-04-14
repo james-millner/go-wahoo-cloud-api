@@ -1,11 +1,17 @@
 package webhook
 
 import (
+	"bytes"
+	"context"
 	"encoding/json"
 	"fmt"
+	"github.com/aws/aws-sdk-go-v2/aws"
+	"github.com/aws/aws-sdk-go-v2/config"
+	"github.com/aws/aws-sdk-go-v2/service/s3"
 	"io"
 	"log"
 	"net/http"
+	"strconv"
 	"time"
 )
 
@@ -90,5 +96,45 @@ func Callback() func(w http.ResponseWriter, r *http.Request) {
 			http.Error(w, "Internal Server Error", http.StatusInternalServerError)
 			return
 		}
+
+		sdkConfig, err := config.LoadDefaultConfig(context.TODO())
+		if err != nil {
+			log.Printf("Couldn't load default configuration. Here's why: %v\n", err)
+			return
+		}
+
+		// Create S3 service client
+		svc := s3.NewFromConfig(sdkConfig, func(o *s3.Options) {
+			o.BaseEndpoint = aws.String("https://fly.storage.tigris.dev")
+			o.Region = "auto"
+		})
+
+		// Download the fit file
+		resp, err := http.Get(wahooWorkout.WorkoutSummary.File.URL)
+		if err != nil {
+			fmt.Println("Error downloading file:", err)
+			return
+		}
+		defer resp.Body.Close()
+
+		// Convert response body to io.Reader
+		var buf bytes.Buffer
+		_, err = io.Copy(&buf, resp.Body)
+		if err != nil {
+			fmt.Println("Error reading response body:", err)
+			return
+		}
+
+		reader := bytes.NewReader(buf.Bytes())
+
+		_, err = svc.PutObject(context.TODO(), &s3.PutObjectInput{
+			Bucket: aws.String("wahoo-fit-files-raw"),
+			Key:    aws.String(strconv.Itoa(wahooWorkout.WorkoutSummary.Workout.ID) + ".fit"),
+			Body:   reader,
+		})
+		if err != nil {
+			log.Printf("Couldn't upload file. Here's why: %v\n", err)
+		}
+
 	}
 }

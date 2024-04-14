@@ -36,8 +36,9 @@ func TestOAuthHappyPath_RedirectCorrectly(t *testing.T) {
 
 func TestAuthCallback_AuthCodeReceived_HappyPath(t *testing.T) {
 
-	container, _, wiremockPort := startWiremock()
+	container, network, wiremockPort := startWiremock()
 	defer container.Close()
+	defer network.Close()
 
 	wiremockClient := wiremock.NewClient("http://localhost:" + wiremockPort)
 	defer wiremockClient.Reset()
@@ -70,8 +71,9 @@ func TestAuthCallback_AuthCodeReceived_HappyPath(t *testing.T) {
 
 func TestAuthCallback_AuthCodeReceived_WahooUnavailable(t *testing.T) {
 
-	container, _, wiremockPort := startWiremock()
+	container, network, wiremockPort := startWiremock()
 	defer container.Close()
+	defer network.Close()
 
 	wiremockClient := wiremock.NewClient("http://localhost:" + wiremockPort)
 	defer wiremockClient.Reset()
@@ -93,8 +95,9 @@ func TestAuthCallback_AuthCodeReceived_WahooUnavailable(t *testing.T) {
 
 func TestAuthCallback_AuthCodeReceived_JsonTokenPayloadChanged(t *testing.T) {
 
-	container, _, wiremockPort := startWiremock()
+	container, network, wiremockPort := startWiremock()
 	defer container.Close()
+	defer network.Close()
 
 	wiremockClient := wiremock.NewClient("http://localhost:" + wiremockPort)
 	defer wiremockClient.Reset()
@@ -118,7 +121,7 @@ func TestAuthCallback_AuthCodeReceived_JsonTokenPayloadChanged(t *testing.T) {
 	assert.Equal(t, response.Code, 500)
 }
 
-func startWiremock() (*dockertest.Resource, error, string) {
+func startWiremock() (*dockertest.Resource, *dockertest.Network, string) {
 	// uses a sensible default on windows (tcp/http) and linux/osx (socket)
 	pool, err := dockertest.NewPool("")
 	if err != nil {
@@ -138,7 +141,7 @@ func startWiremock() (*dockertest.Resource, error, string) {
 
 	if err != nil {
 		fmt.Printf("Could not start wiremock: %v \n", err)
-		return r, err, ""
+		return r, network, ""
 	}
 
 	wiremockPort := r.GetPort("8080/tcp")
@@ -157,10 +160,10 @@ func startWiremock() (*dockertest.Resource, error, string) {
 		return nil
 	}); err != nil {
 		fmt.Printf("Could not connect to wiremock container: %v \n", err)
-		return r, err, ""
+		return r, network, ""
 	}
 
-	return r, nil, wiremockPort
+	return r, network, wiremockPort
 }
 
 func unMarshallResponse(wahooRequestBody string) oauth.WahooTokenResponse {

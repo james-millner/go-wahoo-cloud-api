@@ -68,6 +68,13 @@ func TestGetWahooAuthorizeURL(t *testing.T) {
 }
 
 func TestGetWahooOAuthExchangeURLL(t *testing.T) {
+
+	t.Setenv("WAHOO_CLIENT_ID", "client123")
+	t.Setenv("WAHOO_CLIENT_SECRET", "client_secret")
+	t.Setenv("REDIRECT_URI", "https://example.com/callback")
+	t.Setenv("WAHOO_AUTH_BASE_URL", "https://api.wahooligan.com/oauth/authorize")
+	t.Setenv("WAHOO_TOKEN_BASE_URL", "https://api.wahooligan.com/oauth/token")
+
 	testCases := []struct {
 		name             string
 		wahooClientId    string

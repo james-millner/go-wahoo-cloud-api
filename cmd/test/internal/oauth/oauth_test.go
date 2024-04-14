@@ -44,7 +44,7 @@ func TestAuthCallback_AuthCodeReceived_HappyPath(t *testing.T) {
 
 	t.Setenv("WAHOO_TOKEN_BASE_URL", "http://localhost:"+wiremockPort+"/oauth/token")
 
-	wiremockClient.StubFor(wiremock.Post(wiremock.URLPathMatching("/oauth/token")).
+	_ = wiremockClient.StubFor(wiremock.Post(wiremock.URLPathMatching("/oauth/token")).
 		WillReturnResponse(
 			wiremock.NewResponse().WithStatus(200).WithJSONBody(map[string]any{
 				"access_token":  "my_access_token",
@@ -54,6 +54,7 @@ func TestAuthCallback_AuthCodeReceived_HappyPath(t *testing.T) {
 				"scope":         "user_read workouts_read offline_data",
 				"created_at":    123123123,
 			})))
+	defer wiremockClient.Reset()
 
 	request, _ := http.NewRequest("GET", "/?code=abc", nil)
 
@@ -65,6 +66,56 @@ func TestAuthCallback_AuthCodeReceived_HappyPath(t *testing.T) {
 
 	expectedResponseBody := unMarshallResponse(response.Body.String())
 	assert.Equal(t, expectedResponseBody.AccessToken, "my_access_token")
+}
+
+func TestAuthCallback_AuthCodeReceived_WahooUnavailable(t *testing.T) {
+
+	container, _, wiremockPort := startWiremock()
+	defer container.Close()
+
+	wiremockClient := wiremock.NewClient("http://localhost:" + wiremockPort)
+	defer wiremockClient.Reset()
+
+	t.Setenv("WAHOO_TOKEN_BASE_URL", "http://localhost:"+wiremockPort+"/oauth/token")
+
+	_ = wiremockClient.StubFor(wiremock.Post(wiremock.URLPathMatching("/oauth/token")).
+		WillReturnResponse(
+			wiremock.NewResponse().WithStatus(500)))
+
+	request, _ := http.NewRequest("GET", "/?code=abc", nil)
+
+	response := httptest.NewRecorder()
+	handler := http.HandlerFunc(oauth.AuthCallback())
+	handler.ServeHTTP(response, request)
+
+	assert.Equal(t, response.Code, 500)
+}
+
+func TestAuthCallback_AuthCodeReceived_JsonTokenPayloadChanged(t *testing.T) {
+
+	container, _, wiremockPort := startWiremock()
+	defer container.Close()
+
+	wiremockClient := wiremock.NewClient("http://localhost:" + wiremockPort)
+	defer wiremockClient.Reset()
+
+	t.Setenv("WAHOO_TOKEN_BASE_URL", "http://localhost:"+wiremockPort+"/oauth/token")
+
+	_ = wiremockClient.StubFor(wiremock.Post(wiremock.URLPathMatching("/oauth/token")).
+		WillReturnResponse(
+			wiremock.NewResponse().WithStatus(200).WithJSONBody(map[string]any{
+				"refresh_tokened": "my_refresh_token",
+				"scopey":          "user_read workouts_read offline_data",
+			})))
+	defer wiremockClient.Reset()
+
+	request, _ := http.NewRequest("GET", "/?code=abc", nil)
+
+	response := httptest.NewRecorder()
+	handler := http.HandlerFunc(oauth.AuthCallback())
+	handler.ServeHTTP(response, request)
+
+	assert.Equal(t, response.Code, 500)
 }
 
 func startWiremock() (*dockertest.Resource, error, string) {

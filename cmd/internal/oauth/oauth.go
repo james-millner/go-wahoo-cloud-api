@@ -3,6 +3,7 @@ package oauth
 import (
 	"encoding/json"
 	"fmt"
+	"github.com/go-playground/validator/v10"
 	"github.com/james-millner/go-wahoo-cloud-api/cmd/pkg/utils"
 	"io"
 	"log"
@@ -10,19 +11,13 @@ import (
 	"os"
 )
 
-// Response Struct
-type Response struct {
-	WahooResponseCode int    `json:"wahoo_response_code"`
-	Message           string `json:"message"`
-}
-
 type WahooTokenResponse struct {
-	AccessToken  string `json:"access_token"`
-	TokenType    string `json:"token_type"`
-	ExpiresIn    int    `json:"expires_in"`
-	RefreshToken string `json:"refresh_token"`
-	Scope        string `json:"scope"`
-	CreatedAt    int    `json:"created_at"`
+	AccessToken  string `json:"access_token" validate:"required"`
+	TokenType    string `json:"token_type" validate:"required"`
+	ExpiresIn    int    `json:"expires_in" validate:"required"`
+	RefreshToken string `json:"refresh_token" validate:"required"`
+	Scope        string `json:"scope" validate:"required"`
+	CreatedAt    int    `json:"created_at" validate:"required"`
 }
 
 func Authorize() func(w http.ResponseWriter, r *http.Request) {
@@ -71,6 +66,11 @@ func AuthCallback() func(w http.ResponseWriter, r *http.Request) {
 			http.Error(w, "Internal Server Error", http.StatusInternalServerError)
 			return
 		}
+		if oauthResponse.StatusCode != http.StatusOK {
+			log.Printf("Error response status code: %d", oauthResponse.StatusCode)
+			http.Error(w, "Internal Server Error", http.StatusInternalServerError)
+			return
+		}
 		defer oauthResponse.Body.Close()
 
 		body, err := io.ReadAll(oauthResponse.Body)
@@ -88,6 +88,14 @@ func AuthCallback() func(w http.ResponseWriter, r *http.Request) {
 			var tokenResponse WahooTokenResponse
 			jErr := json.Unmarshal(body, &tokenResponse)
 			if jErr != nil {
+				fmt.Println("Error unmarshalling JSON:", jErr)
+				http.Error(w, "Internal Server Error", http.StatusInternalServerError)
+				return
+			}
+
+			tokenValidator := validator.New(validator.WithRequiredStructEnabled())
+			err = tokenValidator.Struct(tokenResponse)
+			if err != nil {
 				fmt.Println("Error unmarshalling JSON:", jErr)
 				http.Error(w, "Internal Server Error", http.StatusInternalServerError)
 				return

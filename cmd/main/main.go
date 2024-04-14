@@ -21,14 +21,11 @@ import (
 // main function
 func main() {
 
-	wahooClientId := os.Getenv("WAHOO_CLIENT_ID")
-	wahooClientSecret := os.Getenv("WAHOO_CLIENT_SECRET")
-	wahooRedirectURI := os.Getenv("REDIRECT_URI")
 	httpPort, _ := strconv.Atoi(os.Getenv("PORT"))
 
 	srv := &http.Server{
 		Addr:    ":" + strconv.Itoa(httpPort),
-		Handler: handlersMethod(wahooClientId, wahooClientSecret, wahooRedirectURI),
+		Handler: handlersMethod(),
 	}
 
 	go func() {
@@ -57,12 +54,12 @@ func main() {
 	}
 }
 
-func handlersMethod(wahooClientId, wahooClientSecret, wahooRedirectUri string) *goji.Mux {
+func handlersMethod() *goji.Mux {
 	router := goji.NewMux()
 
 	router.HandleFunc(pat.Get("/healthz"), health.HealthHandler())
 	router.HandleFunc(pat.Get("/authorize"), oauth.Authorize())
-	router.HandleFunc(pat.Get("/"), oauth.AuthCallback(wahooClientId, wahooClientSecret, wahooRedirectUri))
+	router.HandleFunc(pat.Get("/"), oauth.AuthCallback())
 	router.HandleFunc(pat.Post("/callback"), webhook.Callback())
 	return router
 }

@@ -1,8 +1,7 @@
-package test
+package utils
 
 import (
 	"fmt"
-	"github.com/james-millner/go-wahoo-cloud-api/cmd/pkg/utils"
 	"testing"
 )
 
@@ -47,7 +46,7 @@ func TestGetWahooAuthorizeURL(t *testing.T) {
 
 	for _, tc := range testCases {
 		t.Run(tc.name, func(t *testing.T) {
-			result, err := utils.GetWahooAuthorizeUrl(tc.wahooClientId, tc.wahooRedirectUri)
+			result, err := GetWahooAuthorizeUrl(tc.wahooClientId, tc.wahooRedirectUri)
 			fmt.Println(result)
 
 			if tc.expectedError {
@@ -108,7 +107,7 @@ func TestGetWahooOAuthExchangeURLL(t *testing.T) {
 
 	for _, tc := range testCases {
 		t.Run(tc.name, func(t *testing.T) {
-			result, err := utils.GetWahooOAuthExchangeURL(tc.wahooClientId, tc.wahooRedirectUri, "123", tc.wahooRedirectUri)
+			result, err := GetWahooOAuthExchangeURL(tc.wahooClientId, tc.wahooRedirectUri, "123", tc.wahooRedirectUri)
 			fmt.Println(result)
 
 			if tc.expectedError {

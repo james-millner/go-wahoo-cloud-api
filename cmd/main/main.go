@@ -8,7 +8,6 @@ import (
 	"net/http"
 	"os"
 	"os/signal"
-	"strconv"
 	"time"
 
 	"github.com/james-millner/go-wahoo-cloud-api/cmd/internal/health"
@@ -21,12 +20,17 @@ import (
 // main function
 func main() {
 
-	httpPort, _ := strconv.Atoi(os.Getenv("PORT"))
+	port := os.Getenv("PORT")
+	if port == "" {
+		port = "8080"
+	}
 
 	srv := &http.Server{
-		Addr:    ":" + strconv.Itoa(httpPort),
+		Addr:    ":" + port,
 		Handler: handlersMethod(),
 	}
+
+	log.Printf("Starting server on port %v", port)
 
 	go func() {
 		// Graceful shutdown
@@ -57,7 +61,7 @@ func main() {
 func handlersMethod() *goji.Mux {
 	router := goji.NewMux()
 
-	router.HandleFunc(pat.Get("/healthz"), health.HealthHandler())
+	router.HandleFunc(pat.Get("/healthz"), health.Health())
 	router.HandleFunc(pat.Get("/authorize"), oauth.Authorize())
 	router.HandleFunc(pat.Get("/"), oauth.AuthCallback())
 	router.HandleFunc(pat.Post("/callback"), webhook.Callback())

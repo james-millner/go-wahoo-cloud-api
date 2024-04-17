@@ -3,7 +3,6 @@ package oauth
 import (
 	"encoding/json"
 	"fmt"
-	"github.com/james-millner/go-wahoo-cloud-api/cmd/internal/oauth"
 	"github.com/magiconair/properties/assert"
 	"github.com/ory/dockertest/v3"
 	"github.com/wiremock/go-wiremock"
@@ -25,13 +24,13 @@ func TestOAuthHappyPath_RedirectCorrectly(t *testing.T) {
 	request, _ := http.NewRequest("GET", "/authorize", nil)
 
 	response := httptest.NewRecorder()
-	handler := http.HandlerFunc(oauth.Authorize())
+	handler := http.HandlerFunc(Authorize())
 	handler.ServeHTTP(response, request)
 
 	assert.Equal(t,
+		response.Result().Header.Get("Location"),
 		"https://api.wahooligan.com/oauth/authorize?client_id=client123&redirect_uri="+
-			"https://example.com/callback&scope=user_read%20workouts_read%20offline_data&response_type=code",
-		response.Result().Header.Get("Location"))
+			"https://example.com/callback&scope=user_read%20workouts_read%20offline_data&response_type=code")
 }
 
 func TestAuthCallback_AuthCodeReceived_HappyPath(t *testing.T) {
@@ -60,7 +59,7 @@ func TestAuthCallback_AuthCodeReceived_HappyPath(t *testing.T) {
 	request, _ := http.NewRequest("GET", "/?code=abc", nil)
 
 	response := httptest.NewRecorder()
-	handler := http.HandlerFunc(oauth.AuthCallback())
+	handler := http.HandlerFunc(AuthCallback())
 	handler.ServeHTTP(response, request)
 
 	assert.Equal(t, response.Code, 200)
@@ -87,7 +86,7 @@ func TestAuthCallback_AuthCodeReceived_WahooUnavailable(t *testing.T) {
 	request, _ := http.NewRequest("GET", "/?code=abc", nil)
 
 	response := httptest.NewRecorder()
-	handler := http.HandlerFunc(oauth.AuthCallback())
+	handler := http.HandlerFunc(AuthCallback())
 	handler.ServeHTTP(response, request)
 
 	assert.Equal(t, response.Code, 500)
@@ -115,7 +114,7 @@ func TestAuthCallback_AuthCodeReceived_JsonTokenPayloadChanged(t *testing.T) {
 	request, _ := http.NewRequest("GET", "/?code=abc", nil)
 
 	response := httptest.NewRecorder()
-	handler := http.HandlerFunc(oauth.AuthCallback())
+	handler := http.HandlerFunc(AuthCallback())
 	handler.ServeHTTP(response, request)
 
 	assert.Equal(t, response.Code, 500)
@@ -166,8 +165,8 @@ func startWiremock() (*dockertest.Resource, *dockertest.Network, string) {
 	return r, network, wiremockPort
 }
 
-func unMarshallResponse(wahooRequestBody string) oauth.WahooTokenResponse {
-	var tokenResponse oauth.WahooTokenResponse
+func unMarshallResponse(wahooRequestBody string) WahooTokenResponse {
+	var tokenResponse WahooTokenResponse
 	_ = json.Unmarshal([]byte(wahooRequestBody), &tokenResponse)
 	return tokenResponse
 }

@@ -2,7 +2,6 @@ package webhook
 
 import (
 	"encoding/json"
-	"github.com/james-millner/go-wahoo-cloud-api/cmd/internal/webhook"
 	"net/http"
 	"net/http/httptest"
 	"reflect"
@@ -18,7 +17,7 @@ func TestWahooCallback_HappyPath(t *testing.T) {
 	request, _ := http.NewRequest("POST", "/webhook", strings.NewReader(str))
 
 	response := httptest.NewRecorder()
-	handler := http.HandlerFunc(webhook.Callback())
+	handler := http.HandlerFunc(Callback())
 	handler.ServeHTTP(response, request)
 
 	if response.Code != http.StatusOK {
@@ -42,7 +41,7 @@ func TestWahooCallback_InvalidJson(t *testing.T) {
 	request, _ := http.NewRequest("POST", "/webhook", strings.NewReader(str))
 
 	response := httptest.NewRecorder()
-	handler := http.HandlerFunc(webhook.Callback())
+	handler := http.HandlerFunc(Callback())
 	handler.ServeHTTP(response, request)
 
 	if response.Code != http.StatusInternalServerError {
@@ -57,18 +56,18 @@ func TestWahooCallback_InvalidWorkoutSummaryJson(t *testing.T) {
 	request, _ := http.NewRequest("POST", "/webhook", strings.NewReader(str))
 
 	response := httptest.NewRecorder()
-	handler := http.HandlerFunc(webhook.Callback())
+	handler := http.HandlerFunc(Callback())
 	handler.ServeHTTP(response, request)
 
 	actualResponseBody := unMarshallResponse(response.Body.String())
 
-	if actualResponseBody != (webhook.WahooCloudApiResponseBody{}) {
+	if actualResponseBody != (WahooCloudApiResponseBody{}) {
 		t.Errorf("Expected response body to be a non-empty struct")
 	}
 }
 
-func unMarshallResponse(wahooRequestBody string) webhook.WahooCloudApiResponseBody {
-	var wahooWorkout webhook.WahooCloudApiResponseBody
+func unMarshallResponse(wahooRequestBody string) WahooCloudApiResponseBody {
+	var wahooWorkout WahooCloudApiResponseBody
 	_ = json.Unmarshal([]byte(wahooRequestBody), &wahooWorkout)
 	return wahooWorkout
 }

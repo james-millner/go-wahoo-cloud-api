@@ -5,21 +5,21 @@ import (
 	"net/http"
 )
 
-// HealthResponse Struct
-type HealthResponse struct {
+// Response Struct for a simple health check
+type Response struct {
 	Message string `json:"message"`
 }
 
-// HealthHandler endpoint
-func HealthHandler() func(w http.ResponseWriter, r *http.Request) {
+// Health endpoint
+func Health() func(w http.ResponseWriter, r *http.Request) {
 	return func(w http.ResponseWriter, r *http.Request) {
 		enc := json.NewEncoder(w)
 		enc.SetEscapeHTML(false)
 
-		resp := &HealthResponse{
+		resp := &Response{
 			Message: "OK",
 		}
 
-		enc.Encode(resp)
+		_ = enc.Encode(resp)
 	}
 }

@@ -1,13 +1,14 @@
 package webhook
 
 import (
-	"bytes"
 	"context"
 	"encoding/json"
 	"fmt"
 	"github.com/aws/aws-sdk-go-v2/aws"
 	"github.com/aws/aws-sdk-go-v2/config"
 	"github.com/aws/aws-sdk-go-v2/service/s3"
+	"github.com/go-playground/validator/v10"
+	"github.com/james-millner/go-wahoo-cloud-api/cmd/pkg/utils"
 	"io"
 	"log"
 	"net/http"
@@ -57,10 +58,10 @@ type Workout struct {
 }
 
 type WahooCloudApiResponseBody struct {
-	EventType      string         `json:"event_type"`
-	WebhookToken   string         `json:"webhook_token"`
-	User           User           `json:"user"`
-	WorkoutSummary WorkoutSummary `json:"workout_summary"`
+	EventType      string         `json:"event_type" validate:"required"`
+	WebhookToken   string         `json:"webhook_token" validate:"required"`
+	User           User           `json:"user" validate:"required"`
+	WorkoutSummary WorkoutSummary `json:"workout_summary" validate:"required"`
 }
 
 func Callback() func(w http.ResponseWriter, r *http.Request) {
@@ -88,6 +89,14 @@ func Callback() func(w http.ResponseWriter, r *http.Request) {
 			return
 		}
 
+		tokenValidator := validator.New(validator.WithRequiredStructEnabled())
+		err = tokenValidator.Struct(wahooWorkout)
+		if err != nil {
+			fmt.Println("Error unmarshalling JSON:", jErr)
+			http.Error(w, "Internal Server Error", http.StatusInternalServerError)
+			return
+		}
+
 		// Print the decoded data
 		log.Println("Decoded data: ", wahooWorkout)
 		rEncErr := enc.Encode(wahooWorkout)
@@ -110,22 +119,11 @@ func Callback() func(w http.ResponseWriter, r *http.Request) {
 		})
 
 		// Download the fit file
-		resp, err := http.Get(wahooWorkout.WorkoutSummary.File.URL)
+		reader, err := utils.DownloadFitFileContentsToBuffer(wahooWorkout.WorkoutSummary.File.URL)
 		if err != nil {
 			fmt.Println("Error downloading file:", err)
-			return
+			http.Error(w, "Internal Server Error. Unable to download fit file.", http.StatusInternalServerError)
 		}
-		defer resp.Body.Close()
-
-		// Convert response body to io.Reader
-		var buf bytes.Buffer
-		_, err = io.Copy(&buf, resp.Body)
-		if err != nil {
-			fmt.Println("Error reading response body:", err)
-			return
-		}
-
-		reader := bytes.NewReader(buf.Bytes())
 
 		_, err = svc.PutObject(context.TODO(), &s3.PutObjectInput{
 			Bucket: aws.String("wahoo-fit-files-raw"),

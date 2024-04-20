@@ -62,7 +62,6 @@ func handlersMethod() *goji.Mux {
 	router := goji.NewMux()
 
 	router.HandleFunc(pat.Get("/healthz"), health.Health())
-	router.HandleFunc(pat.Get("/authorize"), oauth.Authorize())
 	router.HandleFunc(pat.Get("/"), oauth.AuthCallback())
 	router.HandleFunc(pat.Post("/callback"), webhook.Callback())
 	return router

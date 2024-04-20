@@ -3,7 +3,7 @@
 # See https://fly.io/docs/reference/configuration/ for information about how to use this file.
 #
 
-app = 'go-wahoo-cloud-api-frosty-cloud-6258'
+app = 'go-wahoo-cloud-api'
 primary_region = 'lhr'
 
 [build]

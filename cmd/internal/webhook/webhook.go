@@ -12,6 +12,7 @@ import (
 	"io"
 	"log"
 	"net/http"
+	"os"
 	"strconv"
 	"time"
 )
@@ -126,7 +127,7 @@ func Callback() func(w http.ResponseWriter, r *http.Request) {
 		}
 
 		_, err = svc.PutObject(context.TODO(), &s3.PutObjectInput{
-			Bucket: aws.String("wahoo-fit-files-raw"),
+			Bucket: aws.String(os.Getenv("BUCKET_NAME")),
 			Key:    aws.String(strconv.Itoa(wahooWorkout.WorkoutSummary.Workout.ID) + ".fit"),
 			Body:   reader,
 		})

@@ -16,6 +16,7 @@ The app is primarily configured by environment variables and is fairly simple to
 
 The following environment variables are required:
 
+```
 PORT = "8080"
 REDIRECT_URI = "MY_REDIRECT_URI"
 WAHOO_CLIENT_ID = "MY_WAHOO_CLIENT_ID"

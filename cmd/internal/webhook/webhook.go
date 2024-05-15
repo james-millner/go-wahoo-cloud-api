@@ -107,33 +107,44 @@ func Callback() func(w http.ResponseWriter, r *http.Request) {
 			return
 		}
 
-		sdkConfig, err := config.LoadDefaultConfig(context.TODO())
+		// Retrieve the environment variable
+		tigrisEnvConfigFlag := os.Getenv("TIGRIS_ENABLED")
+
+		// Convert the environment variable to a boolean
+		tigrisEnabled, err := strconv.ParseBool(tigrisEnvConfigFlag)
 		if err != nil {
-			log.Printf("Couldn't load default configuration. Here's why: %v\n", err)
-			return
+			log.Printf("Could not determine if Tigiris is enabled. Here's why: %v\n", err)
+			tigrisEnabled = false //Fall back to false
 		}
 
-		// Create S3 service client
-		svc := s3.NewFromConfig(sdkConfig, func(o *s3.Options) {
-			o.BaseEndpoint = aws.String("https://fly.storage.tigris.dev")
-			o.Region = "auto"
-		})
+		if tigrisEnabled {
+			sdkConfig, err := config.LoadDefaultConfig(context.TODO())
+			if err != nil {
+				log.Printf("Couldn't load default configuration. Here's why: %v\n", err)
+				return
+			}
 
-		// Download the fit file
-		reader, err := utils.DownloadFitFileContentsToBuffer(wahooWorkout.WorkoutSummary.File.URL)
-		if err != nil {
-			fmt.Println("Error downloading file:", err)
-			http.Error(w, "Internal Server Error. Unable to download fit file.", http.StatusInternalServerError)
+			// Create S3 service client
+			svc := s3.NewFromConfig(sdkConfig, func(o *s3.Options) {
+				o.BaseEndpoint = aws.String("https://fly.storage.tigris.dev")
+				o.Region = "auto"
+			})
+
+			// Download the fit file
+			reader, err := utils.DownloadFitFileContentsToBuffer(wahooWorkout.WorkoutSummary.File.URL)
+			if err != nil {
+				fmt.Println("Error downloading file:", err)
+				http.Error(w, "Internal Server Error. Unable to download fit file.", http.StatusInternalServerError)
+			}
+
+			_, err = svc.PutObject(context.TODO(), &s3.PutObjectInput{
+				Bucket: aws.String(os.Getenv("BUCKET_NAME")),
+				Key:    aws.String(strconv.Itoa(wahooWorkout.WorkoutSummary.Workout.ID) + ".fit"),
+				Body:   reader,
+			})
+			if err != nil {
+				log.Printf("Couldn't upload file. Here's why: %v\n", err)
+			}
 		}
-
-		_, err = svc.PutObject(context.TODO(), &s3.PutObjectInput{
-			Bucket: aws.String(os.Getenv("BUCKET_NAME")),
-			Key:    aws.String(strconv.Itoa(wahooWorkout.WorkoutSummary.Workout.ID) + ".fit"),
-			Body:   reader,
-		})
-		if err != nil {
-			log.Printf("Couldn't upload file. Here's why: %v\n", err)
-		}
-
 	}
 }

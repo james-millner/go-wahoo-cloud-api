@@ -1,4 +1,4 @@
-GoLang - L&D Wahoo Cloud API Project
+Go - L&D Wahoo Cloud API Project
 ----------------------------
 
 This app serves as a backend layer to intercept Wahoo Cloud API requests and responses.

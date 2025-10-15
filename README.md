@@ -25,6 +25,7 @@ WAHOO_CLIENT_SECRET = "MY_WAHOO_CLIENT_SECRET"
 WAHOO_AUTH_BASE_URL = "https://api.wahooligan.com/oauth/authorize"
 WAHOO_TOKEN_BASE_URL = "https://api.wahooligan.com/oauth/token"
 TIGRIS_ENABLED = "true" // Optional, and defaults to false
+FITFILE_SERVICE_URL = "https://fit-file-backend-billowing-cloud-731.fly.dev/api/v1/fitfiles" // Optional, if set will POST FIT files to this service
 ```
 
 ## Deployment

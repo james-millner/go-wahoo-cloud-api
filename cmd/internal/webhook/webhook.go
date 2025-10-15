@@ -1,6 +1,7 @@
 package webhook
 
 import (
+	"bytes"
 	"context"
 	"encoding/json"
 	"fmt"
@@ -117,6 +118,25 @@ func Callback() func(w http.ResponseWriter, r *http.Request) {
 			tigrisEnabled = false //Fall back to false
 		}
 
+		// Download the fit file once for both S3 and external service
+		reader, err := utils.DownloadFitFileContentsToBuffer(wahooWorkout.WorkoutSummary.File.URL)
+		if err != nil {
+			fmt.Println("Error downloading file:", err)
+			http.Error(w, "Internal Server Error. Unable to download fit file.", http.StatusInternalServerError)
+			return
+		}
+
+		// Store the bytes for reuse
+		fileBytes := make([]byte, reader.Len())
+		_, err = reader.Read(fileBytes)
+		if err != nil {
+			log.Printf("Error reading file bytes: %v\n", err)
+			http.Error(w, "Internal Server Error", http.StatusInternalServerError)
+			return
+		}
+
+		fileName := strconv.Itoa(wahooWorkout.WorkoutSummary.Workout.ID) + ".fit"
+
 		if tigrisEnabled {
 			sdkConfig, err := config.LoadDefaultConfig(context.TODO())
 			if err != nil {
@@ -130,20 +150,24 @@ func Callback() func(w http.ResponseWriter, r *http.Request) {
 				o.Region = "auto"
 			})
 
-			// Download the fit file
-			reader, err := utils.DownloadFitFileContentsToBuffer(wahooWorkout.WorkoutSummary.File.URL)
-			if err != nil {
-				fmt.Println("Error downloading file:", err)
-				http.Error(w, "Internal Server Error. Unable to download fit file.", http.StatusInternalServerError)
-			}
-
 			_, err = svc.PutObject(context.TODO(), &s3.PutObjectInput{
 				Bucket: aws.String(os.Getenv("BUCKET_NAME")),
-				Key:    aws.String(strconv.Itoa(wahooWorkout.WorkoutSummary.Workout.ID) + ".fit"),
-				Body:   reader,
+				Key:    aws.String(fileName),
+				Body:   bytes.NewReader(fileBytes),
 			})
 			if err != nil {
-				log.Printf("Couldn't upload file. Here's why: %v\n", err)
+				log.Printf("Couldn't upload file to S3. Here's why: %v\n", err)
+			} else {
+				log.Printf("Successfully uploaded %s to S3", fileName)
+			}
+		}
+
+		// POST file to external service if URL is configured
+		externalServiceURL := os.Getenv("FITFILE_SERVICE_URL")
+		if externalServiceURL != "" {
+			err = utils.PostFitFileToExternalService(fileBytes, fileName, externalServiceURL)
+			if err != nil {
+				log.Printf("Failed to POST file to external service: %v\n", err)
 			}
 		}
 	}

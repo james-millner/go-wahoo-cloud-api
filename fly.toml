@@ -14,7 +14,6 @@ primary_region = 'lhr'
   TIGRIS_ENABLED = 'true'
   WAHOO_AUTH_BASE_URL = 'https://api.wahooligan.com/oauth/authorize'
   WAHOO_TOKEN_BASE_URL = 'https://api.wahooligan.com/oauth/token'
-  FITFILE_SERVICE_URL = 'https://fit-file-backend.fly.dev/api/v1/fitfiles'
 
 [http_service]
   internal_port = 8080

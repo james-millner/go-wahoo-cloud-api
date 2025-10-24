@@ -9,7 +9,7 @@ require (
 	github.com/go-playground/validator/v10 v10.19.0
 	github.com/magiconair/properties v1.8.7
 	github.com/ory/dockertest/v3 v3.10.0
-	github.com/stretchr/testify v1.9.0
+	github.com/stretchr/testify v1.11.1
 	github.com/wiremock/go-wiremock v1.8.0
 	goji.io v2.0.2+incompatible
 	gotest.tools/v3 v3.5.0

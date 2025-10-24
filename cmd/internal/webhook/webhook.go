@@ -169,6 +169,8 @@ func Callback() func(w http.ResponseWriter, r *http.Request) {
 			if err != nil {
 				log.Printf("Failed to POST file to external service: %v\n", err)
 			}
+		} else {
+			log.Println("No external service URL configured; skipping POST to send fit file data.")
 		}
 	}
 }

@@ -84,7 +84,7 @@ func AuthCallback() func(w http.ResponseWriter, r *http.Request) {
 		enc.SetEscapeHTML(false)
 
 		if oauthResponse.StatusCode == http.StatusOK {
-
+			fmt.Println("OAuth exchange successful. Response body:", string(body))
 			var tokenResponse WahooTokenResponse
 			jErr := json.Unmarshal(body, &tokenResponse)
 			if jErr != nil {
